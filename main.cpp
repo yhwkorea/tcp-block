@@ -17,9 +17,10 @@ using namespace std;
 const string REDIRECT_MSG = "HTTP/1.0 302 Redirect\r\nLocation: http://warning.or.kr\r\n\r\n";
 
 void usage() {
-    cout<<"syntax : tcp-block <interface> <pattern>"<<"\n";
-    cout<<"sample : tcp-block wlan0 "Host: test.gilgil.net" "<<"\n";
+    cout << "syntax : tcp-block <interface> <pattern>\n";
+    cout << "sample : tcp-block wlan0 \"Host: test.gilgil.net\"\n";
 }
+
 
 uint16_t checksum(uint16_t* buf, int len) {
     uint32_t sum = 0;
