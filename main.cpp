@@ -176,7 +176,7 @@ bool check_pattern(const u_char* packet, const string& pattern) {
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
-        cout << "syntax: tcp-block <interface> <pattern>\n";
+        usage();
         return -1;
     }
 
