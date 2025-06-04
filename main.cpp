@@ -62,7 +62,7 @@ void send_rst(const ip* ip_hdr, const tcphdr* tcp_hdr) {
 
     *iph = *ip_hdr;
     iph->ip_len = htons(sizeof(ip) + sizeof(tcphdr));
-    iph->ip_ttl = 64;
+    iph->ip_ttl = ip_hdr->ip_ttl;
     iph->ip_sum = 0;
     iph->ip_sum = checksum((uint16_t*)iph, sizeof(ip));
 
