@@ -50,7 +50,7 @@ void send_packet(const char* packet, int size, const in_addr& dst_ip) {
     if (sendto(sock, packet, size, 0, (sockaddr*)&dst, sizeof(dst)) < 0)
         perror("sendto");
     else
-        cout << "[+] Packet sent (size: " << size << ")\n";
+        cout << "[+] Packet sent (size: " << size << ") to " << inet_ntoa(dst_ip) << endl;
 
     close(sock);
 }
@@ -83,6 +83,7 @@ void send_rst(const ip* ip_hdr, const tcphdr* tcp_hdr) {
     tcph->th_sum = checksum((uint16_t*)temp, sizeof(pseudo) + sizeof(tcphdr));
 
     send_packet(packet, sizeof(ip) + sizeof(tcphdr), iph->ip_dst);
+    cout << "[+] Forward RST packet sent to " << inet_ntoa(iph->ip_dst) << endl;
 }
 
 void send_fin_with_payload(const ip* ip_hdr, const tcphdr* tcp_hdr, int data_len) {
@@ -124,6 +125,7 @@ void send_fin_with_payload(const ip* ip_hdr, const tcphdr* tcp_hdr, int data_len
     tcph->th_sum = checksum((uint16_t*)temp, sizeof(pseudo) + sizeof(tcphdr) + payload_len);
 
     send_packet(packet, sizeof(ip) + sizeof(tcphdr) + payload_len, iph->ip_dst);
+    cout << "[+] Backward FIN+HTTP Redirect packet sent to " << inet_ntoa(iph->ip_dst) << endl;
 }
 
 bool check_pattern(const u_char* packet, const string& pattern, int& data_len) {
@@ -164,10 +166,11 @@ int main(int argc, char* argv[]) {
         if (check_pattern(packet, pattern, data_len)) {
             const ip* ip_hdr = (ip*)(packet + 14);
             const tcphdr* tcp_hdr = (tcphdr*)((u_char*)ip_hdr + ip_hdr->ip_hl * 4);
+            cout << "[*] Pattern matched! Intercepting...\n";
             send_fin_with_payload(ip_hdr, tcp_hdr, data_len);
             usleep(1000); // 1ms 대기
             send_rst(ip_hdr, tcp_hdr);
-            cout << "[+] Blocked!" << endl;
+            cout << "[+] Blocked!\n";
         }
     }
     pcap_close(handle);
