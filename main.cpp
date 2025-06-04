@@ -140,8 +140,6 @@ bool check_pattern(const u_char* packet, const string& pattern, int& data_len) {
     if (data_len <= 0) return false;
 
     string payload((char*)packet + offset, data_len);
-
-    // 정확히 "Host: ..." 형태에서 비교
     size_t host_pos = payload.find("Host:");
     if (host_pos == string::npos) return false;
 
@@ -178,7 +176,7 @@ int main(int argc, char* argv[]) {
             const tcphdr* tcp_hdr = (tcphdr*)((u_char*)ip_hdr + ip_hdr->ip_hl * 4);
             cout << "[*] Pattern matched! Intercepting...\n";
             send_fin_with_payload(ip_hdr, tcp_hdr, data_len);
-            usleep(1000); // 1ms 대기
+            usleep(10);
             send_rst(ip_hdr, tcp_hdr);
             cout << "[+] Blocked!\n";
         }
