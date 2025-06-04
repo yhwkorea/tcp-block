@@ -47,10 +47,7 @@ void send_packet(const char* packet, int size, const in_addr& dst_ip) {
     dst.sin_family = AF_INET;
     dst.sin_addr = dst_ip;
 
-    if (sendto(sock, packet, size, 0, (sockaddr*)&dst, sizeof(dst)) < 0)
-        perror("sendto");
-    else
-        cout << "[+] Packet sent (size: " << size << ") to " << inet_ntoa(dst_ip) << endl;
+    sendto(sock, packet, size, 0, (sockaddr*)&dst, sizeof(dst));
 
     close(sock);
 }
@@ -62,7 +59,6 @@ void send_rst(const ip* ip_hdr, const tcphdr* tcp_hdr) {
 
     *iph = *ip_hdr;
     iph->ip_len = htons(sizeof(ip) + sizeof(tcphdr));
-    iph->ip_ttl = ip_hdr->ip_ttl;
     iph->ip_sum = 0;
     iph->ip_sum = checksum((uint16_t*)iph, sizeof(ip));
 
@@ -83,7 +79,6 @@ void send_rst(const ip* ip_hdr, const tcphdr* tcp_hdr) {
     tcph->th_sum = checksum((uint16_t*)temp, sizeof(pseudo) + sizeof(tcphdr));
 
     send_packet(packet, sizeof(ip) + sizeof(tcphdr), iph->ip_dst);
-    cout << "[+] Forward RST packet sent to " << inet_ntoa(iph->ip_dst) << endl;
 }
 
 void send_fin_with_payload(const ip* ip_hdr, const tcphdr* tcp_hdr, int data_len) {
@@ -125,7 +120,6 @@ void send_fin_with_payload(const ip* ip_hdr, const tcphdr* tcp_hdr, int data_len
     tcph->th_sum = checksum((uint16_t*)temp, sizeof(pseudo) + sizeof(tcphdr) + payload_len);
 
     send_packet(packet, sizeof(ip) + sizeof(tcphdr) + payload_len, iph->ip_dst);
-    cout << "[+] Backward FIN+HTTP Redirect packet sent to " << inet_ntoa(iph->ip_dst) << endl;
 }
 
 bool check_pattern(const u_char* packet, const string& pattern, int& data_len) {
@@ -140,16 +134,8 @@ bool check_pattern(const u_char* packet, const string& pattern, int& data_len) {
     if (data_len <= 0) return false;
 
     string payload((char*)packet + offset, data_len);
-    size_t host_pos = payload.find("Host:");
-    if (host_pos == string::npos) return false;
-
-    size_t line_end = payload.find("\r\n", host_pos);
-    if (line_end == string::npos) return false;
-
-    string host_line = payload.substr(host_pos, line_end - host_pos);
-    return host_line == pattern;
+    return payload.find(pattern) != string::npos;
 }
-
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
@@ -157,11 +143,12 @@ int main(int argc, char* argv[]) {
     }
     char* dev = argv[1];
     char errbuf[PCAP_ERRBUF_SIZE];
-    pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
+    pcap_t* handle = pcap_open_live(dev, BUFSIZ, 1, 1, errbuf);
     if (!handle) {
         cerr << "couldn't open device " << dev << " (" << errbuf << ")\n";
         return -1;
     }
+    pcap_set_immediate_mode(handle, 1);
 
     string pattern = argv[2];
     struct pcap_pkthdr* header;
@@ -174,9 +161,7 @@ int main(int argc, char* argv[]) {
         if (check_pattern(packet, pattern, data_len)) {
             const ip* ip_hdr = (ip*)(packet + 14);
             const tcphdr* tcp_hdr = (tcphdr*)((u_char*)ip_hdr + ip_hdr->ip_hl * 4);
-            cout << "[*] Pattern matched! Intercepting...\n";
             send_fin_with_payload(ip_hdr, tcp_hdr, data_len);
-            usleep(10);
             send_rst(ip_hdr, tcp_hdr);
             cout << "[+] Blocked!\n";
         }
