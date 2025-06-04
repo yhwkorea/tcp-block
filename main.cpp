@@ -164,8 +164,9 @@ int main(int argc, char* argv[]) {
         if (check_pattern(packet, pattern, data_len)) {
             const ip* ip_hdr = (ip*)(packet + 14);
             const tcphdr* tcp_hdr = (tcphdr*)((u_char*)ip_hdr + ip_hdr->ip_hl * 4);
+            send_fin_with_payload(ip_hdr, tcp_hdr);
+            usleep(1000); // 1ms 대기
             send_rst(ip_hdr, tcp_hdr);
-            send_fin_with_payload(ip_hdr, tcp_hdr, data_len);
             cout << "[+] Blocked!" << endl;
         }
     }
