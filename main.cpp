@@ -67,6 +67,7 @@ void send_rst(const ip* ip_hdr, const tcphdr* tcp_hdr) {
     iph->ip_sum = checksum((uint16_t*)iph, sizeof(ip));
 
     *tcph = *tcp_hdr;
+    tcph->th_seq = tcp_hdr->th_seq;
     tcph->th_flags = TH_RST | TH_ACK;
     tcph->th_sum = 0;
 
