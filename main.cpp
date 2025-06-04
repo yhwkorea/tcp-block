@@ -140,8 +140,18 @@ bool check_pattern(const u_char* packet, const string& pattern, int& data_len) {
     if (data_len <= 0) return false;
 
     string payload((char*)packet + offset, data_len);
-    return payload.find(pattern) != string::npos;
+
+    // 정확히 "Host: ..." 형태에서 비교
+    size_t host_pos = payload.find("Host:");
+    if (host_pos == string::npos) return false;
+
+    size_t line_end = payload.find("\r\n", host_pos);
+    if (line_end == string::npos) return false;
+
+    string host_line = payload.substr(host_pos, line_end - host_pos);
+    return host_line == pattern;
 }
+
 
 int main(int argc, char* argv[]) {
     if (argc != 3) {
