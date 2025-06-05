@@ -21,27 +21,27 @@ void usage() {
     cout << "sample : tcp-block wlan0 \"Host: test.gilgil.net\"\n";
 }
 
-uint16_t checksum(uint16_t* buf, int len) {
+uint16_t checksum(uint16_t* buf, int len) { //2바이트씩
     uint32_t sum = 0;
     while (len > 1) {
         sum += *buf++;
-        len -= 2;
+        len -= 2; 
     }
     if (len == 1)
         sum += *(uint8_t*)buf;
     sum = (sum >> 16) + (sum & 0xFFFF);
     sum += (sum >> 16);
-    return ~sum;
-}
+    return ~sum;//1의 보수
+} // https://github.com/sem-hub/dhcprelya/blob/master/ip_checksum.c
 
 void send_packet(const char* packet, int size, const in_addr& dst_ip) {
-    int sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+    int sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW); //ipproto_raw > ip 설정
     if (sock < 0) {
         perror("socket");
         return;
     }
     const int one = 1;
-    setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &one, sizeof(one));
+    setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &one, sizeof(one)); //ip_hdrincl > 사용자 ip 사용용
 
     sockaddr_in dst{};
     dst.sin_family = AF_INET;
@@ -59,7 +59,7 @@ void send_rst(const ip* ip_hdr, const tcphdr* tcp_hdr) {
 
     *iph = *ip_hdr;
     iph->ip_len = htons(sizeof(ip) + sizeof(tcphdr));
-    iph->ip_sum = 0;
+    iph->ip_sum = 0; //sum 값이 영향향
     iph->ip_sum = checksum((uint16_t*)iph, sizeof(ip));
 
     *tcph = *tcp_hdr;
@@ -71,7 +71,7 @@ void send_rst(const ip* ip_hdr, const tcphdr* tcp_hdr) {
         uint32_t src, dst;
         uint8_t zero, proto;
         uint16_t len;
-    } pseudo = {iph->ip_src.s_addr, iph->ip_dst.s_addr, 0, IPPROTO_TCP, htons(sizeof(tcphdr))};
+    } pseudo = {iph->ip_src.s_addr, iph->ip_dst.s_addr, 0, IPPROTO_TCP, htons(sizeof(tcphdr))};//ip 계층 무결성 보안을 위함함
 
     char temp[1500];
     memcpy(temp, &pseudo, sizeof(pseudo));
@@ -87,16 +87,16 @@ void send_fin_with_payload(const ip* ip_hdr, const tcphdr* tcp_hdr, int data_len
     ip* iph = (ip*)packet;
     tcphdr* tcph = (tcphdr*)(packet + sizeof(ip));
     char* payload = packet + sizeof(ip) + sizeof(tcphdr);
-    memcpy(payload, REDIRECT_MSG.c_str(), payload_len);
+    memcpy(payload, REDIRECT_MSG.c_str(), payload_len);//printf아니면 c_str() 아니어도 가능
 
     iph->ip_v = 4;
     iph->ip_hl = 5;
-    iph->ip_ttl = 128;
+    iph->ip_ttl = 128;// ttl을 작게 설정할 경우 이 패킷이 중간에 드랍되어 역방향 패킷 도달하지 못하는 경우 발
     iph->ip_p = IPPROTO_TCP;
     iph->ip_src = ip_hdr->ip_dst;
     iph->ip_dst = ip_hdr->ip_src;
     iph->ip_len = htons(sizeof(ip) + sizeof(tcphdr) + payload_len);
-    iph->ip_sum = 0;
+    iph->ip_sum = 0; //sum값이 영향
     iph->ip_sum = checksum((uint16_t*)iph, sizeof(ip));
 
     tcph->th_sport = tcp_hdr->th_dport;
@@ -105,7 +105,7 @@ void send_fin_with_payload(const ip* ip_hdr, const tcphdr* tcp_hdr, int data_len
     tcph->th_ack = htonl(ntohl(tcp_hdr->th_seq) + data_len);
     tcph->th_off = 5;
     tcph->th_flags = TH_FIN | TH_ACK;
-    tcph->th_win = htons(65535);
+    tcph->th_win = htons(65535);//win_size 받을 수 있는 데이터량량
     tcph->th_sum = 0;
 
     struct {
@@ -148,7 +148,7 @@ int main(int argc, char* argv[]) {
         cerr << "couldn't open device " << dev << " (" << errbuf << ")\n";
         return -1;
     }
-    pcap_set_immediate_mode(handle, 1);
+    pcap_set_immediate_mode(handle, 1); //패킷 캡처시 바로 전달
 
     string pattern = argv[2];
     struct pcap_pkthdr* header;
