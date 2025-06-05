@@ -31,7 +31,7 @@ uint16_t checksum(uint16_t* buf, int len) { //2바이트씩
         sum += *(uint8_t*)buf;
     sum = (sum >> 16) + (sum & 0xFFFF);
     sum += (sum >> 16);
-    return ~sum;//1의 보수
+    return ~sum;//1의 보수 //
 } // https://github.com/sem-hub/dhcprelya/blob/master/ip_checksum.c
 
 void send_packet(const char* packet, int size, const in_addr& dst_ip) {
@@ -56,14 +56,17 @@ void send_rst(const ip* ip_hdr, const tcphdr* tcp_hdr) {
     char packet[1500] = {0};
     ip* iph = (ip*)packet;
     tcphdr* tcph = (tcphdr*)(packet + sizeof(ip));
-
+    uint16_t ip_hdr_len = ip_hdr->ip_hl * 4;
+    uint16_t tcp_hdr_len = tcp_hdr->th_off * 4;
+    uint16_t data_len = ntohs(ip_hdr->ip_len) - ip_hdr_len - tcp_hdr_len;
+    
     *iph = *ip_hdr;
     iph->ip_len = htons(sizeof(ip) + sizeof(tcphdr));
     iph->ip_sum = 0; //sum 값이 영향향
     iph->ip_sum = checksum((uint16_t*)iph, sizeof(ip));
 
     *tcph = *tcp_hdr;
-    tcph->th_seq = tcp_hdr->th_seq;
+    tcph->th_seq = htonl(ntohl(tcp_hdr->th_seq) + data_len);
     tcph->th_flags = TH_RST | TH_ACK;
     tcph->th_sum = 0;
 
